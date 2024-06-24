@@ -2,6 +2,10 @@
 #include <LiquidCrystal_I2C.h>
 #include <Servo.h>
 
+// Tambahkan library untuk sensor ultrasonik
+#define trigPin 2
+#define echoPin 3
+
 Servo servo1;
 Servo servo2;
 
@@ -11,8 +15,8 @@ const int servo2Pin = 10; // Pin servo 2
 const float L1 = 10.0; // Panjang lengan 1 (cm)
 const float L2 = 10.0; // Panjang lengan 2 (cm)
 
-float xTargets[] = {4, 6, 8, 10, 12};
-float yTargets[] = {4, 6, 8, 10, 12};
+float xTargets[] = {4, 6, 8, 10, 12}; // Asumsi target
+float yTargets[] = {4, 6, 8, 10, 12}; // Asumsi target
 
 int stepDelay = 20;
 
@@ -66,6 +70,19 @@ void calculateInverseKinematics(float x, float y, float &theta1, float &theta2) 
     lcd.print(theta2);
 }
 
+long readUltrasonicDistance() {
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    
+    long duration = pulseIn(echoPin, HIGH);
+    long distance = duration * 0.034 / 2;
+    
+    return distance;
+}
+
 void setup() {
     Serial.begin(9600);
 
@@ -76,20 +93,30 @@ void setup() {
     // Attach servo ke pin
     servo1.attach(servo1Pin);
     servo2.attach(servo2Pin);
+
+    // Inisialisasi pin ultrasonik
+    pinMode(trigPin, OUTPUT);
+    pinMode(echoPin, INPUT);
 }
 
 void loop() {
+    long distance = readUltrasonicDistance();
+    Serial.print("Distance: ");
+    Serial.println(distance);
+
     for (int i = 0; i < sizeof(xTargets) / sizeof(xTargets[0]); i++) {
-        float x = xTargets[i];
-        float y = yTargets[i];
+        if (distance >= xTargets[i] && distance <= xTargets[i] + 2) {
+            float x = xTargets[i];
+            float y = yTargets[i];
 
-        float theta1 = 0, theta2 = 0;
-        calculateInverseKinematics(x, y, theta1, theta2);
+            float theta1 = 0, theta2 = 0;
+            calculateInverseKinematics(x, y, theta1, theta2);
 
-        moveServo(servo1, theta1);
-        moveServo(servo2, theta2);
+            moveServo(servo1, theta1);
+            moveServo(servo2, theta2);
 
-        delay(1000);
+            delay(1000);
+        }
     }
 }
 
